@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATS Resume Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .file-upload-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s;
+        }
+        .file-upload-area:hover {
+            border-color: #4f46e5;
+            background-color: #f0f4ff;
+        }
+        .file-upload-area.drag-over {
+            border-color: #4f46e5;
+            background-color: #e0e7ff;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h1 class="text-3xl font-bold text-gray-800">ATS Resume Checker</h1>
+            </div>
+            
+            <p class="text-gray-600 mb-6">
+                Upload your resume (PDF, DOC, DOCX) or paste text to check if it's optimized for Applicant Tracking Systems (ATS).
+            </p>
+
+            <!-- Tab Selection -->
+            <div class="flex gap-2 mb-6 border-b">
+                <button id="uploadTab" class="tab-btn px-4 py-2 font-semibold border-b-2 border-indigo-600 text-indigo-600">
+                    Upload File
+                </button>
+                <button id="textTab" class="tab-btn px-4 py-2 font-semibold text-gray-500 hover:text-gray-700">
+                    Paste Text
+                </button>
+            </div>
+
+            <!-- Upload Section -->
+            <div id="uploadSection">
+                <div class="file-upload-area rounded-lg p-8 text-center cursor-pointer mb-4" id="dropArea">
+                    <input type="file" id="fileInput" accept=".pdf,.doc,.docx" class="hidden">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="text-lg font-semibold text-gray-700 mb-2">Drop your resume here or click to browse</p>
+                    <p class="text-sm text-gray-500">Supports PDF, DOC, DOCX files</p>
+                </div>
+                <div id="fileInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <div>
+                                <p class="font-semibold text-gray-800" id="fileName"></p>
+                                <p class="text-sm text-gray-600" id="fileSize"></p>
+                            </div>
+                        </div>
+                        <button id="removeFile" class="text-red-600 hover:text-red-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="loadingIndicator" class="hidden text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <p class="text-gray-600 mt-2">Processing your resume...</p>
+                </div>
+            </div>
+
+            <!-- Text Section -->
+            <div id="textSection" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Resume Text
+                </label>
+                <textarea
+                    id="resumeText"
+                    class="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Paste your resume text here..."
+                ></textarea>
+            </div>
+
+            <!-- Analyze Button -->
+            <button
+                id="analyzeBtn"
+                class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition flex items-center justify-center gap-2 mt-6"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                Analyze Resume
+            </button>
+
+            <!-- Results Container -->
+            <div id="results" class="hidden mt-8 border-t pt-8"></div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let extractedText = '';
+        let currentFile = null;
+
+        // Tab switching
+        document.getElementById('uploadTab').addEventListener('click', () => {
+            switchTab('upload');
+        });
+
+        document.getElementById('textTab').addEventListener('click', () => {
+            switchTab('text');
+        });
+
+        function switchTab(tab) {
+            const uploadTab = document.getElementById('uploadTab');
+            const textTab = document.getElementById('textTab');
+            const uploadSection = document.getElementById('uploadSection');
+            const textSection = document.getElementById('textSection');
+
+            if (tab === 'upload') {
+                uploadTab.classList.add('border-indigo-600', 'text-indigo-600');
+                uploadTab.classList.remove('text-gray-500');
+                textTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                textTab.classList.add('text-gray-500');
+                uploadSection.classList.remove('hidden');
+                textSection.classList.add('hidden');
+            } else {
+                textTab.classList.add('border-indigo-600', 'text-indigo-600');
+                textTab.classList.remove('text-gray-500');
+                uploadTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                uploadTab.classList.add('text-gray-500');
+                textSection.classList.remove('hidden');
+                uploadSection.classList.add('hidden');
+            }
+        }
+
+        // File upload handling
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+
+        dropArea.addEventListener('click', () => fileInput.click());
+
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('drag-over');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('drag-over');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('removeFile').addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetFileUpload();
+        });
+
+        async function handleFile(file) {
+            currentFile = file;
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.remove('hidden');
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                if (file.type === 'application/pdf') {
+                    extractedText = await extractTextFromPDF(file);
+                } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+                    extractedText = await extractTextFromWord(file);
+                } else {
+                    alert('Unsupported file format. Please upload PDF, DOC, or DOCX files.');
+                    resetFileUpload();
+                    return;
+                }
+                loadingIndicator.classList.add('hidden');
+                
+                if (!extractedText.trim()) {
+                    alert('Could not extract text from the file. Please try another file or paste text manually.');
+                    resetFileUpload();
+                }
+            } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Error processing file. Please try again or paste text manually.');
+                resetFileUpload();
+            }
+        }
+
+        function resetFileUpload() {
+            currentFile = null;
+            extractedText = '';
+            fileInput.value = '';
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('loadingIndicator').classList.add('hidden');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n';
+            }
+
+            return fullText;
+        }
+
+        async function extractTextFromWord(file) {
+            // Note: For Word files, we'll use a simple approach
+            // In production, you'd want to use a library like mammoth.js
+            alert('Word document support: Please convert to PDF or copy-paste the text for best results.');
+            return '';
+        }
+
+        // Analyze button
+        document.getElementById('analyzeBtn').addEventListener('click', analyzeResume);
+
+        function analyzeResume() {
+            let resumeText = '';
+            
+            // Get text from either file or text input
+            if (document.getElementById('uploadSection').classList.contains('hidden')) {
+                resumeText = document.getElementById('resumeText').value;
+            } else {
+                resumeText = extractedText;
+            }
+            
+            if (!resumeText.trim()) {
+                alert('Please upload a resume or paste text first!');
+                return;
+            }
+
+            const results = {
+                score: 0,
+                maxScore: 100,
+                checks: []
+            };
+
+            // Check 1: Contact Information
+            const hasEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(resumeText);
+            const hasPhone = /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
+            results.checks.push({
+                category: 'Contact Information',
+                passed: hasEmail && hasPhone,
+                message: hasEmail && hasPhone 
+                    ? 'Email and phone number detected' 
+                    : 'Missing email or phone number',
+                points: 10
+            });
+            if (hasEmail && hasPhone) results.score += 10;
+
+            // Check 2: Formatting (no special characters)
+            const hasSpecialChars = /[•→★►◆]/.test(resumeText);
+            results.checks.push({
+                category: 'Formatting',
+                passed: !hasSpecialChars,
+                message: hasSpecialChars 
+                    ? 'Contains special characters that may confuse ATS' 
+                    : 'No problematic special characters detected',
+                points: 15
+            });
+            if (!hasSpecialChars) results.score += 15;
+
+            // Check 3: Section Headers
+            const commonHeaders = ['experience', 'education', 'skills', 'summary', 'work history'];
+            const foundHeaders = commonHeaders.filter(header => 
+                resumeText.toLowerCase().includes(header)
+            );
+            const hasHeaders = foundHeaders.length >= 2;
+            results.checks.push({
+                category: 'Section Headers',
+                passed: hasHeaders,
+                message: hasHeaders 
+                    ? `Found standard sections: ${foundHeaders.join(', ')}` 
+                    : 'Missing standard section headers (Experience, Education, Skills)',
+                points: 15
+            });
+            if (hasHeaders) results.score += 15;
+
+            // Check 4: Keywords/Skills
+            const wordCount = resumeText.trim().split(/\s+/).length;
+            const hasKeywords = wordCount > 50;
+            results.checks.push({
+                category: 'Content Length',
+                passed: hasKeywords,
+                message: hasKeywords 
+                    ? `Good content length (${wordCount} words)` 
+                    : `Content too short (${wordCount} words). Add more details.`,
+                points: 10
+            });
+            if (hasKeywords) results.score += 10;
+
+            // Check 5: Dates
+            const hasDates = /\b(20\d{2}|19\d{2})\b/.test(resumeText);
+            results.checks.push({
+                category: 'Dates',
+                passed: hasDates,
+                message: hasDates 
+                    ? 'Employment/education dates found' 
+                    : 'Missing dates for experience or education',
+                points: 10
+            });
+            if (hasDates) results.score += 10;
+
+            // Check 6: Action Verbs
+            const actionVerbs = ['managed', 'developed', 'created', 'led', 'implemented', 'designed', 
+                                 'analyzed', 'improved', 'coordinated', 'achieved', 'increased', 'reduced'];
+            const foundVerbs = actionVerbs.filter(verb => 
+                resumeText.toLowerCase().includes(verb)
+            );
+            const hasActionVerbs = foundVerbs.length >= 3;
+            results.checks.push({
+                category: 'Action Verbs',
+                passed: hasActionVerbs,
+                message: hasActionVerbs 
+                    ? `Strong action verbs found: ${foundVerbs.slice(0, 5).join(', ')}` 
+                    : 'Use more action verbs (managed, developed, led, etc.)',
+                points: 10
+            });
+            if (hasActionVerbs) results.score += 10;
+
+            // Check 7: Quantifiable Achievements
+            const hasNumbers = /\d+%|\d+\+|[\$€£]\d+|\d+[kKmMbB]/.test(resumeText);
+            results.checks.push({
+                category: 'Quantifiable Results',
+                passed: hasNumbers,
+                message: hasNumbers 
+                    ? 'Metrics and numbers found - great for ATS!' 
+                    : 'Add quantifiable achievements (%, $, numbers)',
+                points: 15
+            });
+            if (hasNumbers) results.score += 15;
+
+            // Check 8: Length Check
+            const isGoodLength = wordCount >= 200 && wordCount <= 800;
+            results.checks.push({
+                category: 'Resume Length',
+                passed: isGoodLength,
+                message: isGoodLength 
+                    ? 'Appropriate length for ATS parsing' 
+                    : wordCount < 200 
+                        ? 'Resume too short - add more details' 
+                        : 'Resume might be too long - consider condensing',
+                points: 10
+            });
+            if (isGoodLength) results.score += 10;
+
+            // Check 9: No Tables/Columns (approximation)
+            const hasTabChars = /\t{2,}/.test(resumeText);
+            results.checks.push({
+                category: 'Structure',
+                passed: !hasTabChars,
+                message: !hasTabChars 
+                    ? 'Simple structure - ATS friendly' 
+                    : 'May contain tables/columns that confuse ATS',
+                points: 5
+            });
+            if (!hasTabChars) results.score += 5;
+
+            displayResults(results);
+        }
+
+        function displayResults(analysis) {
+            const resultsDiv = document.getElementById('results');
+            const scoreColor = getScoreColor(analysis.score);
+            const scoreLabel = getScoreLabel(analysis.score);
+            const progressColor = analysis.score >= 75 ? 'bg-green-500' : analysis.score >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+
+            let checksHTML = analysis.checks.map(check => {
+                const bgColor = check.passed ? 'bg-green-50' : 'bg-red-50';
+                const iconColor = check.passed ? 'text-green-600' : 'text-red-600';
+                const icon = check.passed 
+                    ? '<svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                    : '<svg class="w-6 h-6 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                
+                return `
+                    <div class="flex items-start gap-3 p-4 rounded-lg ${bgColor}">
+                        <div class="${iconColor}">${icon}</div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-semibold text-gray-800">${check.category}</h4>
+                                <span class="text-sm text-gray-600">${check.points} pts</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${check.message}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            resultsDiv.innerHTML = `
+                <div class="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">ATS Score</h2>
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-6xl font-bold ${scoreColor}">${analysis.score}</span>
+                        <span class="text-2xl text-gray-500">/ ${analysis.maxScore}</span>
+                        <span class="ml-4 text-xl font-semibold ${scoreColor}">${scoreLabel}</span>
+                    </div>
+                    <div class="mt-4 bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="h-full ${progressColor}" style="width: ${analysis.score}%"></div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Detailed Analysis</h3>
+                <div class="space-y-3">
+                    ${checksHTML}
+                </div>
+
+                <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex gap-2">
+                        <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-blue-900 mb-1">Tips for ATS Success</h4>
+                            <ul class="text-sm text-blue-800 space-y-1 ml-4 list-disc">
+                                <li>Use standard section headings (Experience, Education, Skills)</li>
+                                <li>Include relevant keywords from the job description</li>
+                                <li>Use simple formatting without tables or text boxes</li>
+                                <li>Quantify your achievements with numbers and percentages</li>
+                                <li>Save as .docx or PDF (check job posting requirements)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.classList.remove('hidden');
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function getScoreColor(score) {
+            if (score >= 75) return 'text-green-600';
+            if (score >= 50) return 'text-yellow-600';
+            return 'text-red-600';
+        }
+
+        function getScoreLabel(score) {
+            if (score >= 75) return 'Excellent';
+            if (score >= 50) return 'Good';
+            return 'Needs Improvement';
+        }
+    </script>
+</body>
+</html>
